@@ -6,6 +6,47 @@
 
 🚧 **Under Construction** — Building a perfect Connect-4 AI using Minimax and Alpha-Beta Pruning, fully playable via web.
 
+## 🔥 Project Structure
+
+```
+gridgod/
+├── backend/
+│   ├── board.go      # Game logic (Connect 4 rules, state, etc.)
+│   └── server.go     # HTTP API handlers and server setup
+├── frontend/
+│   ├── index.html    # Web UI for Connect 4
+│   ├── style.css     # UI styles
+│   └── script.js     # Frontend logic (talks to backend API)
+├── main.go           # Entry point for backend server
+├── go.mod            # Go module definition
+└── README.md         # This file
+```
+
+## 🚀 How to Run
+
+### 1. Backend (Go API)
+- Make sure you have Go installed (1.18+ recommended).
+- Start the backend server:
+  ```sh
+  go run main.go
+  ```
+- The backend will listen on `http://localhost:8080`.
+
+#### API Endpoints
+- `POST   /api/new`   — Start a new game. Returns a game ID and initial state.
+- `POST   /api/move`  — Make a move. Body: `{ "gameId": string, "col": int }`. Returns updated state.
+- `GET    /api/state` — Get current state. Query: `?gameId=...`.
+
+### 2. Frontend (Web UI)
+- Serve the `frontend/` folder with any static file server. For example:
+  ```sh
+  npx serve frontend -l 3000
+  # or
+  python3 -m http.server 3000 --directory frontend
+  ```
+- Open [http://localhost:3000](http://localhost:3000) in your browser.
+- The frontend will talk to the backend API at `localhost:8080`.
+
 ## 🔮 Vision
 
 This project aims to:
@@ -14,21 +55,10 @@ This project aims to:
 - Expose the AI through a RESTful API.
 - Design a sleek web interface to challenge the AI.
 
-## 🛠️ Planned Tech Stack
-
+## 🛠️ Tech Stack
 - **Language**: Go (Golang)
-- **AI Logic**: Minimax + Alpha-Beta Pruning
-- **Frontend**: Vanilla HTML/CSS/JavaScript (or maybe a lightweight JS framework)
-- **Backend Server**: Go net/http or Fiber
-- **Deployment**: Fly.io / Render / Railway
-
-## 📅 Timeline
-
-| Date | Goal |
-|------|------|
-| Day 1 | Build core game logic + CLI-based AI |
-| Day 2 | Implement Alpha-Beta Pruning + Web API |
-| Day 3 | Add frontend, polish UX, deploy |
+- **Frontend**: HTML/CSS/JavaScript
+- **Backend**: Go net/http
 
 ## 🧠 Why?
 

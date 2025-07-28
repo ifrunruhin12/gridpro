@@ -29,14 +29,15 @@ func main() {
 			break
 		}
 
-		fmt.Printf("Player %d, enter column (0-6): ", game.CurrentPlayer)
+		fmt.Printf("Player %d, enter column (1-7): ", game.CurrentPlayer)
 
 		scanner.Scan()
 		input := scanner.Text()
 
 		col, err := strconv.Atoi(strings.TrimSpace(input))
+		col--
 		if err != nil || col < 0 || col > 6 {
-			fmt.Println("Invalid input. Enter a number from 0 to 6.")
+			fmt.Println("Invalid input. Enter a number from 1 to 7.")
 			continue
 		}
 

@@ -41,9 +41,18 @@ func NewHandler() http.Handler {
 func (s *Server) newGameHandler(w http.ResponseWriter, r *http.Request) {
 	s.store.mu.Lock()
 	defer s.store.mu.Unlock()
+
 	id := fmt.Sprintf("game-%d", len(s.store.games)+1)
 	game := &GameState{CurrentPlayer: 1}
+
+	// Let AI (player 1) make the first move
+	aiMove := GetRandomMove(game)
+	if aiMove != -1 {
+		game.Drop(aiMove)
+	}
+
 	s.store.games[id] = game
+
 	resp := GameResponse{
 		GameId:   id,
 		State:    game,
@@ -59,17 +68,45 @@ func (s *Server) moveHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
+
 	s.store.mu.Lock()
 	game, ok := s.store.games[req.GameId]
 	s.store.mu.Unlock()
+
 	if !ok {
 		http.Error(w, "Game not found", http.StatusNotFound)
 		return
 	}
+
+	if game.CurrentPlayer != -1 {
+		http.Error(w, "Not your turn", http.StatusBadRequest)
+		return
+	}
+
+	// Human move
 	if !game.Drop(req.Col) {
 		http.Error(w, "Invalid move", http.StatusBadRequest)
 		return
 	}
+
+	// Check after human move
+	if win := game.CheckWin(); win != 0 || game.IsDraw() {
+		resp := GameResponse{
+			State:    game,
+			CheckWin: win,
+			IsDraw:   game.IsDraw(),
+		}
+		json.NewEncoder(w).Encode(resp)
+		return
+	}
+
+	// AI Move
+	aiMove := GetRandomMove(game)
+	if aiMove != -1 {
+		game.Drop(aiMove)
+	}
+
+	// Final response after AI move
 	resp := GameResponse{
 		State:    game,
 		CheckWin: game.CheckWin(),
@@ -77,6 +114,7 @@ func (s *Server) moveHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	json.NewEncoder(w).Encode(resp)
 }
+
 
 func (s *Server) getStateHandler(w http.ResponseWriter, r *http.Request) {
 	gameId := r.URL.Query().Get("gameId")

@@ -53,13 +53,13 @@ h1 {
 }
 
 .cell.player1 {
-    background: radial-gradient(circle at 30% 30%, #ffecb3 0%, #ff9800 100%);
-    box-shadow: 0 0 10px 2px #ff9800aa;
+    background: radial-gradient(circle at 30% 30%, #ffecb3 0%, #e92207 100%);
+    box-shadow: 0 0 10px 2px #d79a1ea5;
 }
 
 .cell.player2 {
-    background: radial-gradient(circle at 30% 30%, #b3e5fc 0%, #2196f3 100%);
-    box-shadow: 0 0 10px 2px #2196f3aa;
+    background: radial-gradient(circle at 30% 30%, #b3e5fc 0%, #d1dc07 100%);
+    box-shadow: 0 0 10px 2px #c3cb2daa;
 }
 
 #status {
@@ -69,7 +69,7 @@ h1 {
 }
 
 #restart {
-    background: #ff9800;
+    background: #00ffc3;
     color: #fff;
     border: none;
     border-radius: 8px;

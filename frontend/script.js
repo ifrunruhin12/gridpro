@@ -19,7 +19,7 @@ async function newGame() {
     const data = await res.json();
     gameId = data.gameId;
     updateFromState(data);
-    setStatus(`Player 1's turn (🟡)`);
+    setStatus(`Player 1's turn (🔴)`);
     gameActive = true;
 }
 
@@ -28,7 +28,7 @@ function updateFromState(data) {
     currentPlayer = data.state.CurrentPlayer;
     renderBoard();
     if (data.checkWin && data.checkWin !== 0) {
-        setStatus(`🎉 Player ${data.checkWin === 1 ? '1 (🟡)' : '2 (🔵)'} wins!`);
+        setStatus(`🎉 Player ${data.checkWin === 1 ? '1 (🔴)' : '2 (🟡)'} wins!`);
         gameActive = false;
     } else if (data.isDraw) {
         setStatus(`🤝 It's a draw!`);
@@ -73,13 +73,13 @@ async function handleCellClick(e) {
     const data = await res.json();
     updateFromState(data);
     if (data.checkWin && data.checkWin !== 0) {
-        setStatus(`🎉 Player ${data.checkWin === 1 ? '1 (🟡)' : '2 (🔵)'} wins!`);
+        setStatus(`🎉 Player ${data.checkWin === 1 ? '1 (🔴)' : '2 (🟡)'} wins!`);
         gameActive = false;
     } else if (data.isDraw) {
         setStatus(`🤝 It's a draw!`);
         gameActive = false;
     } else {
-        setStatus(`Player ${data.state.CurrentPlayer === 1 ? "1's turn (🟡)" : "2's turn (🔵)"}`);
+        setStatus(`Player ${data.state.CurrentPlayer === 1 ? "1's turn (🔴)" : "2's turn (🟡)"}`);
     }
 }
 

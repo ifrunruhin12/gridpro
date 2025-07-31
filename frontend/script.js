@@ -1,8 +1,7 @@
-// Connect 4 Frontend Game Logic (API version)
 const ROWS = 6;
 const COLS = 7;
-const PLAYER = 1; // Human (🟡)
-const AI = 2;     // AI (🔴)
+const PLAYER = 1;
+const AI = 2;
 const API_URL = 'http://localhost:8080/api';
 
 let board = [];

@@ -1,12 +1,12 @@
 // Connect 4 Frontend Game Logic (API version)
 const ROWS = 6;
 const COLS = 7;
-const PLAYER1 = 1;
-const PLAYER2 = -1;
+const PLAYER = 1; // Human (🟡)
+const AI = 2;     // AI (🔴)
 const API_URL = 'http://localhost:8080/api';
 
 let board = [];
-let currentPlayer = PLAYER1;
+let currentPlayer = PLAYER;
 let gameActive = true;
 let gameId = null;
 
@@ -19,8 +19,13 @@ async function newGame() {
     const data = await res.json();
     gameId = data.gameId;
     updateFromState(data);
-    setStatus(`Player 1's turn (🔴)`);
     gameActive = true;
+
+    if (data.state.CurrentPlayer === PLAYER) {
+        setStatus(`Your turn (🟡)`);
+    } else {
+        setStatus(`AI's turn... (🔴)`);
+    }
 }
 
 function updateFromState(data) {
@@ -28,7 +33,7 @@ function updateFromState(data) {
     currentPlayer = data.state.CurrentPlayer;
     renderBoard();
     if (data.checkWin && data.checkWin !== 0) {
-        setStatus(`🎉 Player ${data.checkWin === 1 ? '1 (🔴)' : '2 (🟡)'} wins!`);
+        setStatus(data.checkWin === PLAYER ? `🎉 You win! (🟡)` : `🤖 AI wins! (🔴)`);
         gameActive = false;
     } else if (data.isDraw) {
         setStatus(`🤝 It's a draw!`);
@@ -42,8 +47,8 @@ function renderBoard() {
         for (let j = 0; j < COLS; j++) {
             const cell = document.createElement('div');
             cell.classList.add('cell');
-            if (board[i][j] === PLAYER1) cell.classList.add('player1');
-            if (board[i][j] === PLAYER2) cell.classList.add('player2');
+            if (board[i][j] === PLAYER) cell.classList.add('player1'); // yellow
+            if (board[i][j] === AI) cell.classList.add('player2');     // red
             cell.dataset.row = i;
             cell.dataset.col = j;
             cell.addEventListener('click', handleCellClick);
@@ -55,31 +60,33 @@ function renderBoard() {
 async function handleCellClick(e) {
     if (!gameActive) return;
     const col = parseInt(e.target.dataset.col);
-    // Only allow move if top cell is empty
     if (board[0][col] !== 0) {
         setStatus('That column is full. Try another.');
         return;
     }
-    // Send move to backend
+
     const res = await fetch(`${API_URL}/move`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ gameId, col })
     });
+
     if (!res.ok) {
         setStatus('Invalid move. Try another.');
         return;
     }
+
     const data = await res.json();
     updateFromState(data);
+
     if (data.checkWin && data.checkWin !== 0) {
-        setStatus(`🎉 Player ${data.checkWin === 1 ? '1 (🔴)' : '2 (🟡)'} wins!`);
+        setStatus(data.checkWin === PLAYER ? `🎉 You win! (🟡)` : `🤖 AI wins! (🔴)`);
         gameActive = false;
     } else if (data.isDraw) {
         setStatus(`🤝 It's a draw!`);
         gameActive = false;
     } else {
-        setStatus(`Player ${data.state.CurrentPlayer === 1 ? "1's turn (🔴)" : "2's turn (🟡)"}`);
+        setStatus(data.state.CurrentPlayer === PLAYER ? `Your turn (🟡)` : `AI's turn... (🔴)`);
     }
 }
 
@@ -89,4 +96,5 @@ function setStatus(msg) {
 
 restartBtn.addEventListener('click', newGame);
 
-newGame(); 
+newGame();
+

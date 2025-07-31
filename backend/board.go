@@ -1,108 +1,105 @@
 package backend
 
-// GameState holds the state of a Connect 4 game
+const (
+	Empty  = 0
+	Player = 1
+	AI     = 2
+	Rows   = 6
+	Cols   = 7
+)
 
-type GameState struct {
-	Board         [6][7]int
-	CurrentPlayer int
-	NextPlayer    int
-	LastMove      int
+type Board struct {
+	Grid         [Rows][Cols]int `json:"grid"`
+	CurrentTurn  int             `json:"current_turn"` // 1 = human, 2 = AI
+	LastMoveRow  int             `json:"last_move_row"`
+	LastMoveCol  int             `json:"last_move_col"`
 }
 
-func (g *GameState) Drop(col int) bool {
-	if col < 0 || col > 6 {
+// Drop places a piece in the selected column.
+// Returns true if the move is valid, false otherwise.
+func (b *Board) Drop(col int) bool {
+	if col < 0 || col >= Cols {
 		return false
 	}
-	for i := 5; i >= 0; i-- {
-		if g.Board[i][col] == 0 {
-			g.Board[i][col] = g.CurrentPlayer
-			g.LastMove = col
-			g.NextPlayer = g.CurrentPlayer
-			g.CurrentPlayer = -g.CurrentPlayer
+	for row := Rows - 1; row >= 0; row-- {
+		if b.Grid[row][col] == Empty {
+			b.Grid[row][col] = b.CurrentTurn
+			b.LastMoveRow = row
+			b.LastMoveCol = col
+			b.toggleTurn()
 			return true
 		}
 	}
 	return false
 }
 
-func (g *GameState) CheckWin() int {
-	board := g.Board
-	// Horizontal
-	for i := 0; i < 6; i++ {
-		for j := 0; j < 4; j++ {
-			if board[i][j] != 0 &&
-				board[i][j] == board[i][j+1] &&
-				board[i][j] == board[i][j+2] &&
-				board[i][j] == board[i][j+3] {
-				return board[i][j]
-			}
-		}
-	}
-	// Vertical
-	for i := 0; i < 3; i++ {
-		for j := 0; j < 7; j++ {
-			if board[i][j] != 0 &&
-				board[i][j] == board[i+1][j] &&
-				board[i][j] == board[i+2][j] &&
-				board[i][j] == board[i+3][j] {
-				return board[i][j]
-			}
-		}
-	}
-	// Diagonal ↘
-	for i := 0; i < 3; i++ {
-		for j := 0; j < 4; j++ {
-			if board[i][j] != 0 &&
-				board[i][j] == board[i+1][j+1] &&
-				board[i][j] == board[i+2][j+2] &&
-				board[i][j] == board[i+3][j+3] {
-				return board[i][j]
-			}
-		}
-	}
-	// Diagonal ↗
-	for i := 3; i < 6; i++ {
-		for j := 0; j < 4; j++ {
-			if board[i][j] != 0 &&
-				board[i][j] == board[i-1][j+1] &&
-				board[i][j] == board[i-2][j+2] &&
-				board[i][j] == board[i-3][j+3] {
-				return board[i][j]
-			}
-		}
-	}
-	return 0 // no winner yet
-}
-
-func (g *GameState) IsDraw() bool {
-	for _, row := range g.Board {
-		for _, cell := range row {
-			if cell == 0 {
-				return false
-			}
-		}
-	}
-	return g.CheckWin() == 0
-}
-
-func (g *GameState) Clone() *GameState {
-	newBoard := g.Board //Arrays are value-copied in Go
-	return &GameState{
-		Board:         newBoard,
-		CurrentPlayer: g.CurrentPlayer,
-		NextPlayer:    g.NextPlayer,
-		LastMove:      g.LastMove,
+func (b *Board) toggleTurn() {
+	if b.CurrentTurn == Player {
+		b.CurrentTurn = AI
+	} else {
+		b.CurrentTurn = Player
 	}
 }
 
-func (g *GameState) ValidMoves() []int {
-	moves := []int{}
-	for col := 0; col < 7; col++ {
-		if g.Board[0][col] == 0 {
-			moves = append(moves, col)
+// CheckWin checks if the last move resulted in a win.
+// Returns 0 if no win, 1 if Player wins, 2 if AI wins.
+func (b *Board) CheckWin() int {
+	lastRow := b.LastMoveRow
+	lastCol := b.LastMoveCol
+	if lastRow == -1 || lastCol == -1 {
+		return 0
+	}
+	player := b.Grid[lastRow][lastCol]
+
+	directions := [][2]int{
+		{0, 1},  // horizontal
+		{1, 0},  // vertical
+		{1, 1},  // diagonal /
+		{1, -1}, // diagonal \
+	}
+
+	for _, d := range directions {
+		count := 1
+		count += b.countDirection(lastRow, lastCol, d[0], d[1], player)
+		count += b.countDirection(lastRow, lastCol, -d[0], -d[1], player)
+		if count >= 4 {
+			return player
 		}
 	}
-	return moves
+	return 0
 }
 
-// Print() method and fmt import removed as it is not used anywhere in the backend
+// countDirection counts the number of consecutive same-colored discs in one direction
+func (b *Board) countDirection(row, col, dr, dc, player int) int {
+	count := 0
+	for {
+		row += dr
+		col += dc
+		if row < 0 || row >= Rows || col < 0 || col >= Cols || b.Grid[row][col] != player {
+			break
+		}
+		count++
+	}
+	return count
+}
+
+// IsDraw returns true if the board is full and no winner
+func (b *Board) IsDraw() bool {
+	for c := 0; c < Cols; c++ {
+		if b.Grid[0][c] == Empty {
+			return false
+		}
+	}
+	return b.CheckWin() == 0
+}
+
+// Clone creates a deep copy of the board
+func (b *Board) Clone() *Board {
+	newBoard := *b
+	return &newBoard
+}
+
+func (b *Board) IsValidMove(col int) bool {
+	return col >= 0 && col < Cols && b.Grid[0][col] == Empty
+}
+

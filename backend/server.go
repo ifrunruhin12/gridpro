@@ -8,15 +8,15 @@ import (
 )
 
 type GameStore struct {
-	games map[string]*GameState
+	games map[string]*Board
 	mu    sync.Mutex
 }
 
 type GameResponse struct {
-	GameId   string     `json:"gameId,omitempty"`
-	State    *GameState `json:"state"`
-	CheckWin int        `json:"checkWin"`
-	IsDraw   bool       `json:"isDraw"`
+	GameId   string  `json:"gameId,omitempty"`
+	State    *Board  `json:"state"`
+	CheckWin int     `json:"checkWin"`
+	IsDraw   bool    `json:"isDraw"`
 }
 
 type MoveRequest struct {
@@ -30,7 +30,7 @@ type Server struct {
 }
 
 func NewHandler() http.Handler {
-	store := &GameStore{games: make(map[string]*GameState)}
+	store := &GameStore{games: make(map[string]*Board)}
 	s := &Server{store: store, mux: http.NewServeMux()}
 	s.mux.HandleFunc("/api/new", s.newGameHandler)
 	s.mux.HandleFunc("/api/move", s.moveHandler)
@@ -43,21 +43,25 @@ func (s *Server) newGameHandler(w http.ResponseWriter, r *http.Request) {
 	defer s.store.mu.Unlock()
 
 	id := fmt.Sprintf("game-%d", len(s.store.games)+1)
-	game := &GameState{CurrentPlayer: 1}
-
-	// Let AI (player 1) make the first move
-	aiMove := GetRandomMove(game)
-	if aiMove != -1 {
-		game.Drop(aiMove)
+	board := &Board{
+		CurrentTurn: AI, // AI starts first
+		LastMoveRow: -1,
+		LastMoveCol: -1,
 	}
 
-	s.store.games[id] = game
+	// AI makes the first move
+	aiMove := GetGreedyAIMove(board)
+	if aiMove != -1 {
+		board.Drop(aiMove)
+	}
+
+	s.store.games[id] = board
 
 	resp := GameResponse{
 		GameId:   id,
-		State:    game,
-		CheckWin: game.CheckWin(),
-		IsDraw:   game.IsDraw(),
+		State:    board,
+		CheckWin: board.CheckWin(),
+		IsDraw:   board.IsDraw(),
 	}
 	json.NewEncoder(w).Encode(resp)
 }
@@ -70,7 +74,7 @@ func (s *Server) moveHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.store.mu.Lock()
-	game, ok := s.store.games[req.GameId]
+	board, ok := s.store.games[req.GameId]
 	s.store.mu.Unlock()
 
 	if !ok {
@@ -78,57 +82,55 @@ func (s *Server) moveHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if game.CurrentPlayer != -1 {
+	if board.CurrentTurn != Player {
 		http.Error(w, "Not your turn", http.StatusBadRequest)
 		return
 	}
 
 	// Human move
-	if !game.Drop(req.Col) {
+	if !board.Drop(req.Col) {
 		http.Error(w, "Invalid move", http.StatusBadRequest)
 		return
 	}
 
 	// Check after human move
-	if win := game.CheckWin(); win != 0 || game.IsDraw() {
+	if win := board.CheckWin(); win != 0 || board.IsDraw() {
 		resp := GameResponse{
-			State:    game,
+			State:    board,
 			CheckWin: win,
-			IsDraw:   game.IsDraw(),
+			IsDraw:   board.IsDraw(),
 		}
 		json.NewEncoder(w).Encode(resp)
 		return
 	}
 
-	// AI Move
-	aiMove := GetRandomMove(game)
+	// AI move
+	aiMove := GetGreedyAIMove(board)
 	if aiMove != -1 {
-		game.Drop(aiMove)
+		board.Drop(aiMove)
 	}
 
-	// Final response after AI move
 	resp := GameResponse{
-		State:    game,
-		CheckWin: game.CheckWin(),
-		IsDraw:   game.IsDraw(),
+		State:    board,
+		CheckWin: board.CheckWin(),
+		IsDraw:   board.IsDraw(),
 	}
 	json.NewEncoder(w).Encode(resp)
 }
 
-
 func (s *Server) getStateHandler(w http.ResponseWriter, r *http.Request) {
 	gameId := r.URL.Query().Get("gameId")
 	s.store.mu.Lock()
-	game, ok := s.store.games[gameId]
+	board, ok := s.store.games[gameId]
 	s.store.mu.Unlock()
 	if !ok {
 		http.Error(w, "Game not found", http.StatusNotFound)
 		return
 	}
 	resp := GameResponse{
-		State:    game,
-		CheckWin: game.CheckWin(),
-		IsDraw:   game.IsDraw(),
+		State:    board,
+		CheckWin: board.CheckWin(),
+		IsDraw:   board.IsDraw(),
 	}
 	json.NewEncoder(w).Encode(resp)
 }
@@ -145,3 +147,4 @@ func enableCORS(h http.Handler) http.Handler {
 		h.ServeHTTP(w, r)
 	})
 }
+

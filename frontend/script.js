@@ -15,22 +15,27 @@ const statusDiv = document.getElementById('status');
 const restartBtn = document.getElementById('restart');
 
 async function newGame() {
-    const res = await fetch(`${API_URL}/new`, { method: 'POST' });
-    const data = await res.json();
-    gameId = data.gameId;
-    updateFromState(data);
-    gameActive = true;
-
-    if (data.state.CurrentPlayer === PLAYER) {
-        setStatus(`Your turn (🟡)`);
-    } else {
-        setStatus(`AI's turn... (🔴)`);
+    setStatus('Loading...');
+    try {
+        const res = await fetch(`${API_URL}/new`, { method: 'POST' });
+        if (!res.ok) {
+            setStatus('Failed to start game: Backend error.');
+            gameActive = false;
+            return;
+        }
+        const data = await res.json();
+        gameId = data.gameId;
+        updateFromState(data);
+        gameActive = true;
+    } catch (err) {
+        setStatus('Failed to connect to backend. Is the server running?');
+        gameActive = false;
     }
 }
 
 function updateFromState(data) {
-    board = data.state.Board;
-    currentPlayer = data.state.CurrentPlayer;
+    board = data.state.grid;
+    currentPlayer = data.state.current_turn;
     renderBoard();
     if (data.checkWin && data.checkWin !== 0) {
         setStatus(data.checkWin === PLAYER ? `🎉 You win! (🟡)` : `🤖 AI wins! (🔴)`);
@@ -38,6 +43,8 @@ function updateFromState(data) {
     } else if (data.isDraw) {
         setStatus(`🤝 It's a draw!`);
         gameActive = false;
+    } else {
+        setStatus(currentPlayer === PLAYER ? `Your turn (🟡)` : `AI's turn... (🔴)`);
     }
 }
 
@@ -78,16 +85,6 @@ async function handleCellClick(e) {
 
     const data = await res.json();
     updateFromState(data);
-
-    if (data.checkWin && data.checkWin !== 0) {
-        setStatus(data.checkWin === PLAYER ? `🎉 You win! (🟡)` : `🤖 AI wins! (🔴)`);
-        gameActive = false;
-    } else if (data.isDraw) {
-        setStatus(`🤝 It's a draw!`);
-        gameActive = false;
-    } else {
-        setStatus(data.state.CurrentPlayer === PLAYER ? `Your turn (🟡)` : `AI's turn... (🔴)`);
-    }
 }
 
 function setStatus(msg) {

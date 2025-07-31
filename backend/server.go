@@ -13,10 +13,10 @@ type GameStore struct {
 }
 
 type GameResponse struct {
-	GameId   string  `json:"gameId,omitempty"`
-	State    *Board  `json:"state"`
-	CheckWin int     `json:"checkWin"`
-	IsDraw   bool    `json:"isDraw"`
+	GameId   string `json:"gameId,omitempty"`
+	State    *Board `json:"state"`
+	CheckWin int    `json:"checkWin"`
+	IsDraw   bool   `json:"isDraw"`
 }
 
 type MoveRequest struct {
@@ -147,4 +147,3 @@ func enableCORS(h http.Handler) http.Handler {
 		h.ServeHTTP(w, r)
 	})
 }
-

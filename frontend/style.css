@@ -53,12 +53,12 @@ h1 {
 }
 
 .cell.player1 {
-    background: radial-gradient(circle at 30% 30%, #ffecb3 0%, #e92207 100%);
+    background: radial-gradient(circle at 30% 30%, #ffecb3 0%, #ffe600 100%);
     box-shadow: 0 0 10px 2px #d79a1ea5;
 }
 
 .cell.player2 {
-    background: radial-gradient(circle at 30% 30%, #b3e5fc 0%, #d1dc07 100%);
+    background: radial-gradient(circle at 30% 30%, #ffc3c3 0%, #e92207 100%);
     box-shadow: 0 0 10px 2px #c3cb2daa;
 }
 

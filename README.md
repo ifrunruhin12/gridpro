@@ -1,70 +1,96 @@
+
 # 🧠 GridGod - The Unbeatable Connect-4 AI
 
-> An AI-powered Connect-4 game built in Go — inspired by a real-life defeat and fueled by redemption. The goal? To never lose again.
+> A blazing-fast, AI-powered Connect-4 game built with Go — born from a crushing loss and reborn as an unrelenting grid overlord. You play yellow. AI plays red. Good luck. You'll need it.
+
+---
 
 ## 📦 Project Status
 
-🚧 **Under Construction** — Building a perfect Connect-4 AI using Minimax and Alpha-Beta Pruning, fully playable via web.
+✅ **Playable & Deployed** — RandomBot & GreedyBot complete.  
+🧠 Next up: Lookahead AI (Minimax with Alpha-Beta Pruning).
 
-## 🔥 Project Structure
+**Play it now**: https://ifrunruhin12.github.io/gridgod  
+**Backend API**: https://gridgod.onrender.com/api
+
+---
+
+## 🗂 Project Structure
 
 ```
 gridgod/
-├── backend/
-│   ├── board.go      # Game logic (Connect 4 rules, state, etc.)
-│   └── server.go     # HTTP API handlers and server setup
-├── frontend/
-│   ├── index.html    # Web UI for Connect 4
-│   ├── style.css     # UI styles
-│   └── script.js     # Frontend logic (talks to backend API)
-├── main.go           # Entry point for backend server
-├── go.mod            # Go module definition
-└── README.md         # This file
+├── backend/              # Backend codebase
+│   ├── board.go          # Game logic (board state, win/draw, moves, etc.)
+│   ├── server.go         # HTTP handlers & game state management
+│   └── ai.go             # AI decision logic (Random, Greedy, etc.)
+├── frontend/             # Web frontend
+│   ├── index.html        # UI layout
+│   ├── style.css         # Visual styles
+│   └── script.js         # Game loop, rendering, API calls
+├── main.go               # Entry point for backend server
+├── go.mod                # Go module definition
+└── README.md             # You're here.
 ```
 
-## 🚀 How to Run
+---
 
-### 1. Backend (Go API)
-- Make sure you have Go installed (1.18+ recommended).
-- Start the backend server:
-  ```sh
-  go run main.go
-  ```
-- The backend will listen on `http://localhost:8080`.
+## 🚀 How it Works
 
-#### API Endpoints
-- `POST   /api/new`   — Start a new game. Returns a game ID and initial state.
-- `POST   /api/move`  — Make a move. Body: `{ "gameId": string, "col": int }`. Returns updated state.
-- `GET    /api/state` — Get current state. Query: `?gameId=...`.
+#### API Routes
 
-### 2. Frontend (Web UI)
-- Serve the `frontend/` folder with any static file server. For example:
-  ```sh
-  npx serve frontend -l 3000
-  # or
-  python3 -m http.server 3000 --directory frontend
-  ```
-- Open [http://localhost:3000](http://localhost:3000) in your browser.
-- The frontend will talk to the backend API at `localhost:8080`.
+| Method | Endpoint         | Description                        |
+|--------|------------------|------------------------------------|
+| POST   | `/api/new`       | Starts a new game (AI moves first) |
+| POST   | `/api/move`      | Makes a move (by human player)     |
+| GET    | `/api/state`     | Gets current game state            |
+
+---
+
+#### Frontend
+
+If using the deployed version:
+- Make sure frontend API points to `https://gridgod.onrender.com/api`
+
+---
+
+## 🌐 Deployment
+
+| Part      | Platform         | Link                                        |
+|-----------|------------------|---------------------------------------------|
+| Backend   | Render           | https://gridgod.onrender.com                |
+| Frontend  | GitHub Pages     | https://ifrunruhin12.github.io/gridgod      |
+
+To update frontend:
+1. Push to `gh-pages` branch (or deploy `/frontend` from `main`)
+2. GitHub Pages will auto-publish the static site
+
+---
 
 ## 🔮 Vision
 
-This project aims to:
-- Build a fully functioning Connect-4 engine in Go.
-- Implement a powerful AI that always plays optimally.
-- Expose the AI through a RESTful API.
-- Design a sleek web interface to challenge the AI.
+- ✅ RandomBot ✅ GreedyBot  
+- 🧠 Up next: Lookahead-1 AI  
+- ⚔️ Future: Full Minimax + Alpha-Beta Pruning
+- 🎮 Goal: Become **unbeatable** (first-move win guaranteed)
+
+---
 
 ## 🛠️ Tech Stack
-- **Language**: Go (Golang)
-- **Frontend**: HTML/CSS/JavaScript
-- **Backend**: Go net/http
+
+- 💻 **Language**: Go (Golang)
+- 🌐 **Frontend**: HTML, CSS, JavaScript
+- 🔗 **Backend**: net/http, REST API
+- 🧠 **AI**: Step-by-step evolution (Random → Greedy → Minimax)
+
+---
 
 ## 🧠 Why?
 
-Connect-4 is a **solved game**. With perfect play, the first player can always win. This AI will make sure of it — using logic, recursion, and some good ol’ Go code.
+Connect-4 is a solved game. The first player can always win with perfect play.  
+This project is my journey to building that perfect AI — and learning a ton about game engines, algorithms, and web systems in the process.
 
-## 📌 License
+---
 
-MIT © 2025 popcycle
+## 📄 License
 
+MIT © 2025 [popcycle](https://github.com/ifrunruhin12)

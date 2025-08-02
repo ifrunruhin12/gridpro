@@ -3,11 +3,17 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 
 	"gridgod/backend"
 )
 
 func main() {
-	log.Println("Backend running on :8080")
-	log.Fatal(http.ListenAndServe(":8080", backend.NewHandler()))
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	log.Println("Server running on port", port)
+	log.Fatal(http.ListenAndServe(":"+port, backend.NewHandler()))
 }
+

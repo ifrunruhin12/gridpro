@@ -2,7 +2,7 @@ const ROWS = 6;
 const COLS = 7;
 const PLAYER = 1;
 const AI = 2;
-const API_URL = 'http://localhost:8080/api';
+const API_URL = 'https://gridgod.onrender.com/api';
 
 let board = [];
 let currentPlayer = PLAYER;

@@ -50,7 +50,7 @@ func (s *Server) newGameHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// AI makes the first move
-	aiMove := GetGreedyAIMove(board)
+	aiMove := GetAIMove(board)
 	if aiMove != -1 {
 		board.Drop(aiMove)
 	}
@@ -105,7 +105,7 @@ func (s *Server) moveHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// AI move
-	aiMove := GetGreedyAIMove(board)
+	aiMove := GetAIMove(board)
 	if aiMove != -1 {
 		board.Drop(aiMove)
 	}

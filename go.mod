@@ -1,3 +1,3 @@
-module gridgod
+module gridpro
 
 go 1.24.4

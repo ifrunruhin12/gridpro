@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"os"
 
-	"gridgod/backend"
+	"gridpro/backend"
 )
 
 func main() {

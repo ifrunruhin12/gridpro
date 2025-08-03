@@ -50,7 +50,7 @@ gridpro/
 ## 🌐 Deployment
 
 - Frontend: Deployed via GitHub Pages.
-- Backend: Hosted on Render — https://gridgod.onrender.com/
+- Backend: Hosted on Render.
 - Make sure to update the API base URL in `script.js` if deploying somewhere else.
 
 ## 🔮 Vision

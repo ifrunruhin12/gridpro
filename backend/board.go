@@ -103,3 +103,13 @@ func (b *Board) IsValidMove(col int) bool {
 	return col >= 0 && col < Cols && b.Grid[0][col] == Empty
 }
 
+func (b *Board) ValidMoves() []int {
+	moves := []int{}
+	for col := 0; col < Cols; col++ {
+		if b.IsValidMove(col) {
+			moves = append(moves, col)
+		}
+	}
+	return moves
+}
+

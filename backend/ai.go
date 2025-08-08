@@ -19,10 +19,21 @@ var openingBook = map[string]int{
 	"000000000000000000000000000000000020000000": 2, // Opponent plays one further
 }
 
+// Preferred column order for move ordering (center-out)
+var preferredCols = []int{3, 2, 4, 1, 5, 0, 6}
+
+// Simple transposition table for minimax caching
+var transposition = map[string]int{}
+
 // GetAIMove finds the best move for the AI
 func GetAIMove(board *Board) int {
 	if board == nil {
 		return -1
+	}
+
+	// If the board is empty and AI starts, force center
+	if countPieces(board) == 0 {
+		return 3
 	}
 
 	// Check for immediate win
@@ -118,13 +129,8 @@ func getBestMove(board *Board) int {
 	alpha := -1000000
 	beta := 1000000
 
-	// Try center first (best initial move)
-	if board.IsValidMove(3) {
-		return 3
-	}
-
-	// Then try other columns
-	for _, col := range board.ValidMoves() {
+	// Search using preferred move ordering (center-out)
+	for _, col := range orderedMoves(board) {
 		sim := board.Clone()
 		sim.Drop(col)
 
@@ -163,6 +169,11 @@ func getBestMove(board *Board) int {
 }
 
 func minimax(board *Board, depth int, isMaximizing bool, alpha, beta int) int {
+	// Transposition table lookup
+	if val, ok := transposition[boardKey(board, depth, isMaximizing)]; ok {
+		return val
+	}
+
 	// Check terminal states
 	winner := board.CheckWin()
 	if winner == AI {
@@ -172,12 +183,14 @@ func minimax(board *Board, depth int, isMaximizing bool, alpha, beta int) int {
 		return -winScore - depth // Prefer slower losses
 	}
 	if board.IsDraw() || depth == 0 {
-		return evaluateBoard(board)
+		val := evaluateBoard(board)
+		transposition[boardKey(board, depth, isMaximizing)] = val
+		return val
 	}
 
 	if isMaximizing {
 		maxEval := -1000000
-		for _, col := range board.ValidMoves() {
+		for _, col := range orderedMoves(board) {
 			sim := board.Clone()
 			sim.Drop(col)
 			score := minimax(sim, depth-1, false, alpha, beta)
@@ -193,10 +206,11 @@ func minimax(board *Board, depth int, isMaximizing bool, alpha, beta int) int {
 				break
 			}
 		}
+		transposition[boardKey(board, depth, isMaximizing)] = maxEval
 		return maxEval
 	} else {
 		minEval := 1000000
-		for _, col := range board.ValidMoves() {
+		for _, col := range orderedMoves(board) {
 			sim := board.Clone()
 			sim.CurrentTurn = Player
 			sim.Drop(col)
@@ -213,6 +227,7 @@ func minimax(board *Board, depth int, isMaximizing bool, alpha, beta int) int {
 				break
 			}
 		}
+		transposition[boardKey(board, depth, isMaximizing)] = minEval
 		return minEval
 	}
 }
@@ -224,7 +239,7 @@ func evaluateBoard(board *Board) int {
 
 	score := 0
 
-	// Check for immediate wins/losses
+	// Immediate wins/losses
 	switch board.CheckWin() {
 	case AI:
 		return winScore
@@ -232,11 +247,8 @@ func evaluateBoard(board *Board) int {
 		return -winScore
 	}
 
-	// Evaluate based on potential threats and opportunities
-	score += evaluateThreats(board, AI)*10 - evaluateThreats(board, Player)*10
-
-	// Enhanced center control (higher weight for center column)
-	centerWeights := []int{1, 2, 3, 4, 3, 2, 1}
+	// Center column control
+	centerWeights := []int{1, 2, 3, 5, 3, 2, 1}
 	for col := 0; col < Cols; col++ {
 		if col < len(centerWeights) {
 			for row := 0; row < Rows; row++ {
@@ -250,95 +262,118 @@ func evaluateBoard(board *Board) int {
 		}
 	}
 
+	// Window-based scoring (classic Connect 4 heuristic)
+	scoreWindow := func(a, b, c, d int) int {
+		ai, opp, emp := 0, 0, 0
+		vals := [4]int{a, b, c, d}
+		for _, v := range vals {
+			switch v {
+			case AI:
+				ai++
+			case Player:
+				opp++
+			default:
+				emp++
+			}
+		}
+		// Offensive
+		if ai == 4 {
+			return 100000
+		}
+		if ai == 3 && emp == 1 {
+			return 200
+		}
+		if ai == 2 && emp == 2 {
+			return 20
+		}
+		// Defensive (slightly higher to prioritize blocking)
+		if opp == 3 && emp == 1 {
+			return -300
+		}
+		if opp == 2 && emp == 2 {
+			return -30
+		}
+		return 0
+	}
+
+	// Horizontal
+	for row := 0; row < Rows; row++ {
+		for col := 0; col <= Cols-4; col++ {
+			score += scoreWindow(
+				board.Grid[row][col],
+				board.Grid[row][col+1],
+				board.Grid[row][col+2],
+				board.Grid[row][col+3],
+			)
+		}
+	}
+	// Vertical
+	for row := 0; row <= Rows-4; row++ {
+		for col := 0; col < Cols; col++ {
+			score += scoreWindow(
+				board.Grid[row][col],
+				board.Grid[row+1][col],
+				board.Grid[row+2][col],
+				board.Grid[row+3][col],
+			)
+		}
+	}
+	// Diagonal \
+	for row := 0; row <= Rows-4; row++ {
+		for col := 0; col <= Cols-4; col++ {
+			score += scoreWindow(
+				board.Grid[row][col],
+				board.Grid[row+1][col+1],
+				board.Grid[row+2][col+2],
+				board.Grid[row+3][col+3],
+			)
+		}
+	}
+	// Diagonal /
+	for row := 3; row < Rows; row++ {
+		for col := 0; col <= Cols-4; col++ {
+			score += scoreWindow(
+				board.Grid[row][col],
+				board.Grid[row-1][col+1],
+				board.Grid[row-2][col+2],
+				board.Grid[row-3][col+3],
+			)
+		}
+	}
+
 	return score
 }
 
-func evaluateThreats(board *Board, player int) int {
-	threats := 0
+// Preferred move ordering filtered by current valid moves
+func orderedMoves(board *Board) []int {
+	valid := board.ValidMoves()
+	present := make(map[int]bool, len(valid))
+	for _, c := range valid {
+		present[c] = true
+	}
+	res := make([]int, 0, len(valid))
+	for _, c := range preferredCols {
+		if present[c] {
+			res = append(res, c)
+		}
+	}
+	return res
+}
 
-	// Check horizontal threats
+// Board key for transposition table
+func boardKey(b *Board, depth int, isMax bool) string {
+	buf := make([]byte, 0, Rows*Cols+3)
 	for row := 0; row < Rows; row++ {
-		for col := 0; col <= Cols-4; col++ {
-			count := 0
-			empty := 0
-			for i := 0; i < 4; i++ {
-				if board.Grid[row][col+i] == player {
-					count++
-				} else if board.Grid[row][col+i] == Empty {
-					empty++
-				} else {
-					count = 0
-					break
-				}
-			}
-			if count >= 3 && empty == 1 {
-				threats++
-			}
-		}
-	}
-
-	// Check vertical threats
-	for row := 0; row <= Rows-4; row++ {
 		for col := 0; col < Cols; col++ {
-			count := 0
-			empty := 0
-			for i := 0; i < 4; i++ {
-				if board.Grid[row+i][col] == player {
-					count++
-				} else if board.Grid[row+i][col] == Empty {
-					empty++
-				} else {
-					count = 0
-					break
-				}
-			}
-			if count >= 3 && empty == 1 {
-				threats++
-			}
+			buf = append(buf, byte('0'+b.Grid[row][col]))
 		}
 	}
-
-	// Check diagonal down-right (\ direction)
-	for row := 0; row <= Rows-4; row++ {
-		for col := 0; col <= Cols-4; col++ {
-			count := 0
-			empty := 0
-			for i := 0; i < 4; i++ {
-				if board.Grid[row+i][col+i] == player {
-					count++
-				} else if board.Grid[row+i][col+i] == Empty {
-					empty++
-				} else {
-					count = 0
-					break
-				}
-			}
-			if count >= 3 && empty == 1 {
-				threats++
-			}
-		}
+	buf = append(buf, byte('0'+b.CurrentTurn))
+	buf = append(buf, byte(depth%10+'0'))
+	if isMax {
+		buf = append(buf, 'M')
+	} else {
+		buf = append(buf, 'm')
 	}
-
-	// Check diagonal up-right (/ direction)
-	for row := 3; row < Rows; row++ {
-		for col := 0; col <= Cols-4; col++ {
-			count := 0
-			empty := 0
-			for i := 0; i < 4; i++ {
-				if board.Grid[row-i][col+i] == player {
-					count++
-				} else if board.Grid[row-i][col+i] == Empty {
-					empty++
-				} else {
-					count = 0
-					break
-				}
-			}
-			if count >= 3 && empty == 1 {
-				threats++
-			}
-		}
-	}
-
-	return threats
+	return string(buf)
 }

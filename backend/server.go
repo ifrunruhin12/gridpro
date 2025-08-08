@@ -49,10 +49,17 @@ func (s *Server) newGameHandler(w http.ResponseWriter, r *http.Request) {
 		LastMoveCol: -1,
 	}
 
-	// AI makes the first move
-	aiMove := GetAIMove(board)
-	if aiMove != -1 {
-		board.Drop(aiMove)
+	// Reset transposition table for a fresh game
+	transposition = map[string]int{}
+
+	// AI makes the first move (force center column)
+	if countPieces(board) == 0 && board.IsValidMove(3) {
+		board.Drop(3)
+	} else {
+		aiMove := GetAIMove(board)
+		if aiMove != -1 {
+			board.Drop(aiMove)
+		}
 	}
 
 	s.store.games[id] = board

@@ -29,12 +29,22 @@ type Server struct {
 	mux   *http.ServeMux
 }
 
+const BackendVersion = "v1.1-center-opening"
+
 func NewHandler() http.Handler {
 	store := &GameStore{games: make(map[string]*Board)}
 	s := &Server{store: store, mux: http.NewServeMux()}
 	s.mux.HandleFunc("/api/new", s.newGameHandler)
 	s.mux.HandleFunc("/api/move", s.moveHandler)
 	s.mux.HandleFunc("/api/state", s.getStateHandler)
+	// Info endpoint for debugging deployments
+	s.mux.HandleFunc("/api/info", func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(map[string]any{
+			"version":       BackendVersion,
+			"centerOpening": true,
+			"preferredCols": preferredCols,
+		})
+	})
 	return enableCORS(s.mux)
 }
 

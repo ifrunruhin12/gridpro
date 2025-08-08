@@ -2,11 +2,14 @@ package backend
 
 import (
 	"math/rand"
+	"strconv"
+	"time"
 )
 
 const (
-	MaxDepth = 10 // Increased depth for stronger play
-	winScore = 1000000
+	MaxDepth    = 10 // Upper bound for search depth
+	winScore    = 1000000
+	TimeLimitMs = 900 // search time budget per AI move
 )
 
 // Opening book for first few moves
@@ -24,6 +27,9 @@ var preferredCols = []int{3, 2, 4, 1, 5, 0, 6}
 
 // Simple transposition table for minimax caching
 var transposition = map[string]int{}
+
+// Global deadline for time-limited search
+var searchDeadline time.Time
 
 // GetAIMove finds the best move for the AI
 func GetAIMove(board *Board) int {
@@ -58,7 +64,7 @@ func GetAIMove(board *Board) int {
 		}
 	}
 
-	// Default to minimax
+	// Default to bounded-time minimax with iterative deepening
 	return getBestMove(board)
 }
 
@@ -124,51 +130,106 @@ func findWinningMove(board *Board, player int) int {
 }
 
 func getBestMove(board *Board) int {
-	bestScore := -1000000
-	bestMoves := []int{}
+	bestMove := -1
 	alpha := -1000000
 	beta := 1000000
 
-	// Search using preferred move ordering (center-out)
-	for _, col := range orderedMoves(board) {
-		sim := board.Clone()
-		sim.Drop(col)
+	// Set time budget and clear any stale deadline
+	searchDeadline = time.Now().Add(TimeLimitMs * time.Millisecond)
 
-		score := minimax(sim, MaxDepth-1, false, alpha, beta)
+	// Move ordering list
+	candidates := orderedMoves(board)
+	// Prefer to filter out suicidal moves (allow only if no safe moves)
+	safe := make([]int, 0, len(candidates))
+	unsafe := make([]int, 0, len(candidates))
+	for _, c := range candidates {
+		if isSuicidalMove(board, c) {
+			unsafe = append(unsafe, c)
+		} else {
+			safe = append(safe, c)
+		}
+	}
+	if len(safe) > 0 {
+		candidates = safe
+	} else {
+		candidates = unsafe // must choose something
+	}
 
-		if score > bestScore {
-			bestScore = score
-			bestMoves = []int{col}
-		} else if score == bestScore {
-			bestMoves = append(bestMoves, col)
+	// Iterative deepening: progressively deepen until time runs out
+	lastCompletedDepth := 0
+	for depth := 2; depth <= MaxDepth; depth++ {
+		localBest := -1000000
+		localMove := bestMove
+
+		for _, col := range candidates {
+			if time.Now().After(searchDeadline) {
+				break
+			}
+			sim := board.Clone()
+			sim.Drop(col)
+			score := minimax(sim, depth-1, false, alpha, beta)
+			if score > localBest {
+				localBest = score
+			}
+			if score > alpha {
+				alpha = score
+			}
+			if alpha >= beta {
+				break
+			}
 		}
 
-		// Update alpha
-		if score > alpha {
-			alpha = score
-		}
-
-		// Prune if possible
-		if alpha >= beta {
+		if time.Now().After(searchDeadline) {
 			break
 		}
+		// Accept results of this depth
+		lastCompletedDepth = depth
+		bestMove = localMove
+		// Reorder candidates to put the current best first for next iteration
+		candidates = reorderWithBestFirst(candidates, bestMove)
 	}
+	// Mark as used to satisfy compiler
+	_ = lastCompletedDepth
 
-	// Return random move among best moves
-	if len(bestMoves) > 0 {
-		return bestMoves[rand.Intn(len(bestMoves))]
+	// Fallbacks
+	if bestMove != -1 {
+		return bestMove
 	}
-
-	// Fallback: return first valid move
 	moves := board.ValidMoves()
 	if len(moves) > 0 {
-		return moves[0]
+		return moves[rand.Intn(len(moves))]
 	}
-
 	return -1
 }
 
+// Reorder slice to put best at front (keeps relative order otherwise)
+func reorderWithBestFirst(cols []int, best int) []int {
+	if best == -1 || len(cols) == 0 {
+		return cols
+	}
+	res := make([]int, 0, len(cols))
+	res = append(res, best)
+	for _, c := range cols {
+		if c != best {
+			res = append(res, c)
+		}
+	}
+	return res
+}
+
+// isSuicidalMove returns true if after playing col, the opponent has an immediate winning reply
+func isSuicidalMove(board *Board, col int) bool {
+	sim := board.Clone()
+	sim.Drop(col)
+	return findWinningMove(sim, Player) != -1
+}
+
 func minimax(board *Board, depth int, isMaximizing bool, alpha, beta int) int {
+	// Time cutoff
+	if !searchDeadline.IsZero() && time.Now().After(searchDeadline) {
+		return evaluateBoard(board)
+	}
+
 	// Transposition table lookup
 	if val, ok := transposition[boardKey(board, depth, isMaximizing)]; ok {
 		return val
@@ -191,17 +252,19 @@ func minimax(board *Board, depth int, isMaximizing bool, alpha, beta int) int {
 	if isMaximizing {
 		maxEval := -1000000
 		for _, col := range orderedMoves(board) {
+			// Time cutoff
+			if !searchDeadline.IsZero() && time.Now().After(searchDeadline) {
+				break
+			}
 			sim := board.Clone()
 			sim.Drop(col)
 			score := minimax(sim, depth-1, false, alpha, beta)
 			if score > maxEval {
 				maxEval = score
 			}
-			// Update alpha
 			if score > alpha {
 				alpha = score
 			}
-			// Prune if possible
 			if beta <= alpha {
 				break
 			}
@@ -211,6 +274,9 @@ func minimax(board *Board, depth int, isMaximizing bool, alpha, beta int) int {
 	} else {
 		minEval := 1000000
 		for _, col := range orderedMoves(board) {
+			if !searchDeadline.IsZero() && time.Now().After(searchDeadline) {
+				break
+			}
 			sim := board.Clone()
 			sim.CurrentTurn = Player
 			sim.Drop(col)
@@ -218,11 +284,9 @@ func minimax(board *Board, depth int, isMaximizing bool, alpha, beta int) int {
 			if score < minEval {
 				minEval = score
 			}
-			// Update beta
 			if score < beta {
 				beta = score
 			}
-			// Prune if possible
 			if beta <= alpha {
 				break
 			}
@@ -247,8 +311,8 @@ func evaluateBoard(board *Board) int {
 		return -winScore
 	}
 
-	// Center column control
-	centerWeights := []int{1, 2, 3, 5, 3, 2, 1}
+	// Center column control (slightly stronger weight)
+	centerWeights := []int{1, 2, 3, 6, 3, 2, 1}
 	for col := 0; col < Cols; col++ {
 		if col < len(centerWeights) {
 			for row := 0; row < Rows; row++ {
@@ -262,7 +326,7 @@ func evaluateBoard(board *Board) int {
 		}
 	}
 
-	// Window-based scoring (classic Connect 4 heuristic)
+	// Window-based scoring (classic Connect 4 heuristic) with tuned weights
 	scoreWindow := func(a, b, c, d int) int {
 		ai, opp, emp := 0, 0, 0
 		vals := [4]int{a, b, c, d}
@@ -276,22 +340,20 @@ func evaluateBoard(board *Board) int {
 				emp++
 			}
 		}
-		// Offensive
 		if ai == 4 {
-			return 100000
+			return 200000
 		}
 		if ai == 3 && emp == 1 {
-			return 200
+			return 350
 		}
 		if ai == 2 && emp == 2 {
-			return 20
+			return 30
 		}
-		// Defensive (slightly higher to prioritize blocking)
 		if opp == 3 && emp == 1 {
-			return -300
+			return -500
 		}
 		if opp == 2 && emp == 2 {
-			return -30
+			return -40
 		}
 		return 0
 	}
@@ -362,14 +424,16 @@ func orderedMoves(board *Board) []int {
 
 // Board key for transposition table
 func boardKey(b *Board, depth int, isMax bool) string {
-	buf := make([]byte, 0, Rows*Cols+3)
+	buf := make([]byte, 0, Rows*Cols+8)
 	for row := 0; row < Rows; row++ {
 		for col := 0; col < Cols; col++ {
 			buf = append(buf, byte('0'+b.Grid[row][col]))
 		}
 	}
 	buf = append(buf, byte('0'+b.CurrentTurn))
-	buf = append(buf, byte(depth%10+'0'))
+	buf = append(buf, '|')
+	depthStr := strconv.Itoa(depth)
+	buf = append(buf, depthStr...)
 	if isMax {
 		buf = append(buf, 'M')
 	} else {

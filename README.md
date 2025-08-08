@@ -11,7 +11,7 @@
 The AI uses a combination of advanced techniques to provide a challenging opponent:
 
 ### Minimax Algorithm with Alpha-Beta Pruning
-- **Depth-Limited Search**: Explores up to 6 moves ahead (configurable via `MaxDepth` constant)
+- **Iterative Deepening + Time Budget**: Searches progressively deeper up to `MaxDepth` (currently 10) within ~`TimeLimitMs` (900ms) per AI move
 - **Alpha-Beta Pruning**: Optimizes the search by eliminating branches that won't affect the final decision
 - **Heuristic Evaluation**: Evaluates board positions based on:
   - Center control (prioritizes center columns)
@@ -25,19 +25,21 @@ The AI uses a combination of advanced techniques to provide a challenging oppone
 - **Win/Loss Detection**: Immediate evaluation of terminal states
 
 ### Performance Optimizations
-- **Move Ordering**: Evaluates center columns first (better pruning)
-- **Early Termination**: Stops evaluation immediately when a winning move is found
-- **Efficient Board Cloning**: Minimizes memory usage during search
+- **Opening Book**: Hard-coded optimal early moves to accelerate strong starts
+- **Preferred Move Ordering**: Center-out ordering improves pruning
+- **Suicidal Move Filter**: Avoids moves that allow the opponent an immediate win
+- **Transposition Table**: Caches board evaluations to avoid recomputation
+- **Early Termination**: Respects a strict time limit per move
 
 ## Project Structure
 
 ```
 gridpro/
 ├── backend/
-│   ├── ai.go        # AI logic (Minimax with Alpha-Beta pruning)
+│   ├── ai.go        # AI logic (Minimax, Alpha-Beta, iterative deepening, opening book)
 │   ├── board.go     # Game logic (Connect 4 rules, state, etc.)
 │   └── server.go    # HTTP API handlers and server setup
-├── frontend/
+├── docs/
 │   ├── index.html   # Web UI for Connect 4
 │   ├── style.css    # UI styles
 │   └── script.js    # Frontend logic (talks to backend API)
@@ -60,13 +62,14 @@ gridpro/
 - `POST   /api/new`   — Start a new game. Returns a game ID and initial state.
 - `POST   /api/move`  — Make a move. Body: `{ "gameId": string, "col": int }`. Returns updated state.
 - `GET    /api/state` — Get current state. Query: `?gameId=...`.
+- `GET    /api/info`  — Get backend info (version, opening preferences).
 
 ### 2. Frontend (Web UI)
-- Serve the `frontend/` folder with any static file server. For example:
+- Serve the `docs/` folder with any static file server. For example:
   ```sh
-  npx serve frontend -l 3000
+  npx serve docs -l 3000
   # or
-  python3 -m http.server 3000 --directory frontend
+  python3 -m http.server 3000 --directory docs
   ```
 - Open [http://localhost:3000](http://localhost:3000) in your browser.
 - The frontend will talk to the backend API at `localhost:8080`.
@@ -80,15 +83,16 @@ gridpro/
 ## Customizing the AI
 
 You can adjust the AI's difficulty by modifying these constants in `backend/ai.go`:
-- `MaxDepth`: Controls how many moves ahead the AI looks (higher = stronger but slower)
+- `MaxDepth`: Maximum search depth (default 10). Higher = stronger but slower.
+- `TimeLimitMs`: Per-move search budget in milliseconds (default 900ms).
 - Evaluation function weights in `evaluateBoard()`
 
 ## Future Improvements
 
 - [ ] Add difficulty levels (Easy, Medium, Hard)
-- [ ] Implement iterative deepening for dynamic difficulty
 - [ ] Add move history and undo functionality
 - [ ] Optimize evaluation function for better performance
+- [ ] Persistent transposition table across moves within a game with better keying
 
 ## Tech Stack
 - **Language**: Go (Golang)

@@ -2,7 +2,9 @@ const ROWS = 6;
 const COLS = 7;
 const PLAYER = 1;
 const AI = 2;
-const API_URL = 'https://gridgod.onrender.com/api';
+// Prefer local backend during development or when opened from file://; fall back to production API when hosted on the prod domain
+const useLocal = (location.protocol === 'file:' || location.hostname === '' || location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+const API_URL = useLocal ? 'http://localhost:8080/api' : 'https://gridgod.onrender.com/api';
 
 let board = [];
 let currentPlayer = PLAYER;
@@ -93,4 +95,3 @@ function setStatus(msg) {
 restartBtn.addEventListener('click', newGame);
 
 newGame();
-

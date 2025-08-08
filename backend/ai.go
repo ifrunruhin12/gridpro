@@ -7,9 +7,9 @@ import (
 )
 
 const (
-	MaxDepth    = 10 // Upper bound for search depth
+	MaxDepth    = 12 // Upper bound for search depth (tuned)
 	winScore    = 1000000
-	TimeLimitMs = 900 // search time budget per AI move
+	TimeLimitMs = 1400 // search time budget per AI move (tuned)
 )
 
 // Opening book for first few moves
@@ -170,6 +170,7 @@ func getBestMove(board *Board) int {
 			score := minimax(sim, depth-1, false, alpha, beta)
 			if score > localBest {
 				localBest = score
+				localMove = col
 			}
 			if score > alpha {
 				alpha = score
@@ -343,17 +344,17 @@ func evaluateBoard(board *Board) int {
 		if ai == 4 {
 			return 200000
 		}
-		if ai == 3 && emp == 1 {
-			return 350
+		if ai == 3 && emp == 1 { // strong immediate threat
+			return 500
 		}
 		if ai == 2 && emp == 2 {
-			return 30
+			return 40
 		}
-		if opp == 3 && emp == 1 {
-			return -500
+		if opp == 3 && emp == 1 { // prioritize blocking
+			return -700
 		}
 		if opp == 2 && emp == 2 {
-			return -40
+			return -60
 		}
 		return 0
 	}

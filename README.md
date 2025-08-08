@@ -11,7 +11,7 @@
 The AI uses a combination of advanced techniques to provide a challenging opponent:
 
 ### Minimax Algorithm with Alpha-Beta Pruning
-- **Iterative Deepening + Time Budget**: Searches progressively deeper up to `MaxDepth` (currently 10) within ~`TimeLimitMs` (900ms) per AI move
+- **Iterative Deepening + Time Budget**: Searches progressively deeper up to `MaxDepth` (currently 12) within ~`TimeLimitMs` (1400ms) per AI move
 - **Alpha-Beta Pruning**: Optimizes the search by eliminating branches that won't affect the final decision
 - **Heuristic Evaluation**: Evaluates board positions based on:
   - Center control (prioritizes center columns)
@@ -28,7 +28,7 @@ The AI uses a combination of advanced techniques to provide a challenging oppone
 - **Opening Book**: Hard-coded optimal early moves to accelerate strong starts
 - **Preferred Move Ordering**: Center-out ordering improves pruning
 - **Suicidal Move Filter**: Avoids moves that allow the opponent an immediate win
-- **Transposition Table**: Caches board evaluations to avoid recomputation
+- **Transposition Table**: Caches board evaluations to avoid recomputation (improved keying — no depth collisions)
 - **Early Termination**: Respects a strict time limit per move
 
 ## Project Structure
@@ -83,9 +83,9 @@ gridpro/
 ## Customizing the AI
 
 You can adjust the AI's difficulty by modifying these constants in `backend/ai.go`:
-- `MaxDepth`: Maximum search depth (default 10). Higher = stronger but slower.
-- `TimeLimitMs`: Per-move search budget in milliseconds (default 900ms).
-- Evaluation function weights in `evaluateBoard()`
+- `MaxDepth`: Maximum search depth (default 12). Higher = stronger but slower.
+- `TimeLimitMs`: Per-move search budget in milliseconds (default 1400ms).
+- Evaluation function weights in `evaluateBoard()` (threat and center weights tuned for stronger play)
 
 ## Future Improvements
 

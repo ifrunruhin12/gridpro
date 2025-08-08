@@ -5,72 +5,171 @@ import (
 )
 
 const (
-	MaxDepth = 6  // Increased depth for better AI with pruning
+	MaxDepth = 10 // Increased depth for stronger play
+	winScore = 1000000
 )
 
-// GetAIMove finds the best move for the AI using Minimax with Alpha-Beta pruning
+// Opening book for first few moves
+var openingBook = map[string]int{
+	// Empty board - always start in center
+	"000000000000000000000000000000000000000000": 3,
+	// Common responses after center start
+	"000000000000000000000000000000020000000000": 3, // Opponent plays center
+	"000000000000000000000000000000000200000000": 3, // Opponent plays adjacent
+	"000000000000000000000000000000000020000000": 2, // Opponent plays one further
+}
+
+// GetAIMove finds the best move for the AI
 func GetAIMove(board *Board) int {
+	if board == nil {
+		return -1
+	}
+
+	// Check for immediate win
+	if move := findWinningMove(board, AI); move != -1 {
+		return move
+	}
+
+	// Check for opponent's immediate threat
+	if move := findWinningMove(board, Player); move != -1 {
+		return move
+	}
+
+	// Check opening book
+	if move, found := lookupOpeningBook(board); found {
+		return move
+	}
+
+	// For endgame, use perfect play if possible
+	if countPieces(board) >= 30 { // Late game
+		if move := findForcedWin(board); move != -1 {
+			return move
+		}
+	}
+
+	// Default to minimax
+	return getBestMove(board)
+}
+
+func lookupOpeningBook(board *Board) (int, bool) {
+	key := ""
+	for row := 0; row < Rows; row++ {
+		for col := 0; col < Cols; col++ {
+			key += string('0' + byte(board.Grid[row][col]))
+		}
+	}
+	move, exists := openingBook[key]
+	return move, exists
+}
+
+func countPieces(board *Board) int {
+	count := 0
+	for row := 0; row < Rows; row++ {
+		for col := 0; col < Cols; col++ {
+			if board.Grid[row][col] != Empty {
+				count++
+			}
+		}
+	}
+	return count
+}
+
+func findForcedWin(board *Board) int {
+	// Try all possible moves to see if any lead to a forced win
+	for _, col := range board.ValidMoves() {
+		sim := board.Clone()
+		sim.Drop(col)
+		if sim.CheckWin() == AI {
+			return col
+		}
+		// If opponent can't win in their next move
+		if !canOpponentWin(sim) {
+			return col
+		}
+	}
+	return -1
+}
+
+func canOpponentWin(board *Board) bool {
+	for _, col := range board.ValidMoves() {
+		sim := board.Clone()
+		sim.CurrentTurn = Player
+		if sim.Drop(col) && sim.CheckWin() == Player {
+			return true
+		}
+	}
+	return false
+}
+
+func findWinningMove(board *Board, player int) int {
+	for _, col := range board.ValidMoves() {
+		sim := board.Clone()
+		sim.CurrentTurn = player
+		if sim.Drop(col) && sim.CheckWin() == player {
+			return col
+		}
+	}
+	return -1
+}
+
+func getBestMove(board *Board) int {
 	bestScore := -1000000
 	bestMoves := []int{}
 	alpha := -1000000
 	beta := 1000000
 
-	// Get all valid moves
-	validMoves := board.ValidMoves()
-	
-	// If only one move is available, return it immediately
-	if len(validMoves) == 1 {
-		return validMoves[0]
+	// Try center first (best initial move)
+	if board.IsValidMove(3) {
+		return 3
 	}
 
-	// Try each valid move
-	for _, col := range validMoves {
+	// Then try other columns
+	for _, col := range board.ValidMoves() {
 		sim := board.Clone()
 		sim.Drop(col)
 
-		// Start the minimax search
 		score := minimax(sim, MaxDepth-1, false, alpha, beta)
 
-		// Update best move if this score is better
 		if score > bestScore {
 			bestScore = score
 			bestMoves = []int{col}
-			// Update alpha (best already explored option for max player)
-			if score > alpha {
-				alpha = score
-			}
 		} else if score == bestScore {
 			bestMoves = append(bestMoves, col)
 		}
 
-		// Alpha-Beta Pruning
+		// Update alpha
+		if score > alpha {
+			alpha = score
+		}
+
+		// Prune if possible
 		if alpha >= beta {
 			break
 		}
 	}
 
-	// If multiple moves have the same score, choose one at random
+	// Return random move among best moves
 	if len(bestMoves) > 0 {
 		return bestMoves[rand.Intn(len(bestMoves))]
 	}
 
-	// Fallback: return first valid move if no best move found
-	if len(validMoves) > 0 {
-		return validMoves[0]
+	// Fallback: return first valid move
+	moves := board.ValidMoves()
+	if len(moves) > 0 {
+		return moves[0]
 	}
 
 	return -1
 }
 
-// minimax implements the minimax algorithm with alpha-beta pruning
 func minimax(board *Board, depth int, isMaximizing bool, alpha, beta int) int {
 	// Check terminal states
 	winner := board.CheckWin()
 	if winner == AI {
-		return 1000 + depth // Prefer faster wins
+		return winScore + depth // Prefer faster wins
 	}
 	if winner == Player {
-		return -1000 - depth // Prefer slower losses
+		return -winScore - depth // Prefer slower losses
 	}
 	if board.IsDraw() || depth == 0 {
 		return evaluateBoard(board)
@@ -118,97 +217,128 @@ func minimax(board *Board, depth int, isMaximizing bool, alpha, beta int) int {
 	}
 }
 
-// evaluateBoard provides a simple evaluation of the board position
-// Positive score is good for AI, negative is good for player
 func evaluateBoard(board *Board) int {
+	if board == nil {
+		return 0
+	}
+
 	score := 0
-	
-	// Check center control (columns 2,3,4 are more valuable)
-	centerCols := []int{2, 3, 4}
-	for _, col := range centerCols {
-		for row := 0; row < Rows; row++ {
-			if board.Grid[row][col] == AI {
-				score += 2
-			} else if board.Grid[row][col] == Player {
-				score -= 2
+
+	// Check for immediate wins/losses
+	switch board.CheckWin() {
+	case AI:
+		return winScore
+	case Player:
+		return -winScore
+	}
+
+	// Evaluate based on potential threats and opportunities
+	score += evaluateThreats(board, AI)*10 - evaluateThreats(board, Player)*10
+
+	// Enhanced center control (higher weight for center column)
+	centerWeights := []int{1, 2, 3, 4, 3, 2, 1}
+	for col := 0; col < Cols; col++ {
+		if col < len(centerWeights) {
+			for row := 0; row < Rows; row++ {
+				switch board.Grid[row][col] {
+				case AI:
+					score += centerWeights[col]
+				case Player:
+					score -= centerWeights[col]
+				}
 			}
 		}
 	}
-	
-	// Check for potential 3-in-a-row
-	score += countPotentialWins(board, AI) * 5
-	score -= countPotentialWins(board, Player) * 5
-	
+
 	return score
 }
 
-// countPotentialWins counts the number of potential winning positions for a player
-func countPotentialWins(board *Board, player int) int {
-	count := 0
-	// Check all possible 4-in-a-row positions
+func evaluateThreats(board *Board, player int) int {
+	threats := 0
+
+	// Check horizontal threats
 	for row := 0; row < Rows; row++ {
-		for col := 0; col < Cols; col++ {
-			// Skip if this position is already occupied by the opponent
-			if board.Grid[row][col] != Empty && board.Grid[row][col] != player {
-				continue
-			}
-			
-			// Check horizontal
-			if col <= Cols-4 {
-				potential := true
-				for i := 0; i < 4; i++ {
-					if board.Grid[row][col+i] != Empty && board.Grid[row][col+i] != player {
-						potential = false
-						break
-					}
-				}
-				if potential {
+		for col := 0; col <= Cols-4; col++ {
+			count := 0
+			empty := 0
+			for i := 0; i < 4; i++ {
+				if board.Grid[row][col+i] == player {
 					count++
+				} else if board.Grid[row][col+i] == Empty {
+					empty++
+				} else {
+					count = 0
+					break
 				}
 			}
-			
-			// Check vertical
-			if row <= Rows-4 {
-				potential := true
-				for i := 0; i < 4; i++ {
-					if board.Grid[row+i][col] != Empty && board.Grid[row+i][col] != player {
-						potential = false
-						break
-					}
-				}
-				if potential {
-					count++
-				}
-			}
-			
-			// Check diagonal down-right
-			if row <= Rows-4 && col <= Cols-4 {
-				potential := true
-				for i := 0; i < 4; i++ {
-					if board.Grid[row+i][col+i] != Empty && board.Grid[row+i][col+i] != player {
-						potential = false
-						break
-					}
-				}
-				if potential {
-					count++
-				}
-			}
-			
-			// Check diagonal up-right
-			if row >= 3 && col <= Cols-4 {
-				potential := true
-				for i := 0; i < 4; i++ {
-					if board.Grid[row-i][col+i] != Empty && board.Grid[row-i][col+i] != player {
-						potential = false
-						break
-					}
-				}
-				if potential {
-					count++
-				}
+			if count >= 3 && empty == 1 {
+				threats++
 			}
 		}
 	}
-	return count
+
+	// Check vertical threats
+	for row := 0; row <= Rows-4; row++ {
+		for col := 0; col < Cols; col++ {
+			count := 0
+			empty := 0
+			for i := 0; i < 4; i++ {
+				if board.Grid[row+i][col] == player {
+					count++
+				} else if board.Grid[row+i][col] == Empty {
+					empty++
+				} else {
+					count = 0
+					break
+				}
+			}
+			if count >= 3 && empty == 1 {
+				threats++
+			}
+		}
+	}
+
+	// Check diagonal down-right (\ direction)
+	for row := 0; row <= Rows-4; row++ {
+		for col := 0; col <= Cols-4; col++ {
+			count := 0
+			empty := 0
+			for i := 0; i < 4; i++ {
+				if board.Grid[row+i][col+i] == player {
+					count++
+				} else if board.Grid[row+i][col+i] == Empty {
+					empty++
+				} else {
+					count = 0
+					break
+				}
+			}
+			if count >= 3 && empty == 1 {
+				threats++
+			}
+		}
+	}
+
+	// Check diagonal up-right (/ direction)
+	for row := 3; row < Rows; row++ {
+		for col := 0; col <= Cols-4; col++ {
+			count := 0
+			empty := 0
+			for i := 0; i < 4; i++ {
+				if board.Grid[row-i][col+i] == player {
+					count++
+				} else if board.Grid[row-i][col+i] == Empty {
+					empty++
+				} else {
+					count = 0
+					break
+				}
+			}
+			if count >= 3 && empty == 1 {
+				threats++
+			}
+		}
+	}
+
+	return threats
 }

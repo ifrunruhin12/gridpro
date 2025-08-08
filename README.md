@@ -1,28 +1,52 @@
-# 🧠 GridPro - The Smartest Connect-4 AI
+# GridPro - The Smartest Connect-4 AI
 
 > An AI-powered Connect-4 game built in Go — born from a real-life defeat and rebuilt for total domination. The mission? Never lose again.
 
-## 📦 Project Status
+## Project Status
 
-🚧 **Under Construction** — Currently building a competitive Connect-4 AI with lookahead strategies. Fully playable via a modern web UI.
+ **Live & Learning** — Features a competitive Connect-4 AI with Minimax and Alpha-Beta pruning. Fully playable via a modern web UI.
 
-## 🔥 Project Structure
+## AI Implementation
+
+The AI uses a combination of advanced techniques to provide a challenging opponent:
+
+### Minimax Algorithm with Alpha-Beta Pruning
+- **Depth-Limited Search**: Explores up to 6 moves ahead (configurable via `MaxDepth` constant)
+- **Alpha-Beta Pruning**: Optimizes the search by eliminating branches that won't affect the final decision
+- **Heuristic Evaluation**: Evaluates board positions based on:
+  - Center control (prioritizes center columns)
+  - Potential winning moves (threat detection)
+  - Defensive play (blocks opponent's winning moves)
+
+### Evaluation Function
+- **Center Control**: Bonus points for pieces in central columns
+- **Potential Wins**: Detects and prioritizes creating multiple winning opportunities
+- **Defensive Play**: Recognizes and blocks opponent's threats
+- **Win/Loss Detection**: Immediate evaluation of terminal states
+
+### Performance Optimizations
+- **Move Ordering**: Evaluates center columns first (better pruning)
+- **Early Termination**: Stops evaluation immediately when a winning move is found
+- **Efficient Board Cloning**: Minimizes memory usage during search
+
+## Project Structure
 
 ```
 gridpro/
 ├── backend/
-│   ├── board.go      # Game logic (Connect 4 rules, state, etc.)
-│   └── server.go     # HTTP API handlers and server setup
+│   ├── ai.go        # AI logic (Minimax with Alpha-Beta pruning)
+│   ├── board.go     # Game logic (Connect 4 rules, state, etc.)
+│   └── server.go    # HTTP API handlers and server setup
 ├── frontend/
-│   ├── index.html    # Web UI for Connect 4
-│   ├── style.css     # UI styles
-│   └── script.js     # Frontend logic (talks to backend API)
-├── main.go           # Entry point for backend server
-├── go.mod            # Go module definition
-└── README.md         # This file
+│   ├── index.html   # Web UI for Connect 4
+│   ├── style.css    # UI styles
+│   └── script.js    # Frontend logic (talks to backend API)
+├── main.go          # Entry point for backend server
+├── go.mod           # Go module definition
+└── README.md        # This file
 ```
 
-## 🚀 How to Run
+## How to Run
 
 ### 1. Backend (Go API)
 - Make sure you have Go installed (1.18+ recommended).
@@ -47,30 +71,35 @@ gridpro/
 - Open [http://localhost:3000](http://localhost:3000) in your browser.
 - The frontend will talk to the backend API at `localhost:8080`.
 
-## 🌐 Deployment
+## Deployment
 
 - Frontend: Deployed via GitHub Pages.
 - Backend: Hosted on Render.
 - Make sure to update the API base URL in `script.js` if deploying somewhere else.
 
-## 🔮 Vision
+## Customizing the AI
 
-This project aims to:
-- Build a fully functioning Connect-4 engine in Go.
-- Implement a powerful AI that levels up: Random → Greedy → Lookahead → Minimax.
-- Expose the AI through a RESTful API.
-- Design a sleek web interface to challenge the AI.
+You can adjust the AI's difficulty by modifying these constants in `backend/ai.go`:
+- `MaxDepth`: Controls how many moves ahead the AI looks (higher = stronger but slower)
+- Evaluation function weights in `evaluateBoard()`
 
-## 🛠️ Tech Stack
+## Future Improvements
+
+- [ ] Add difficulty levels (Easy, Medium, Hard)
+- [ ] Implement iterative deepening for dynamic difficulty
+- [ ] Add move history and undo functionality
+- [ ] Optimize evaluation function for better performance
+
+## Tech Stack
 - **Language**: Go (Golang)
 - **Frontend**: HTML/CSS/JavaScript
 - **Backend**: Go net/http
+- **AI**: Minimax with Alpha-Beta pruning
 
-## 🧠 Why GridPro?
+## Why GridPro?
 
-Connect-4 is a **solved game**. With perfect play, the first player can always win. GridPro is your shot at mastering it — one move at a time.
+Connect-4 is a **solved game**. With perfect play, the first player can always win. GridPro implements advanced AI techniques to provide a challenging opponent that adapts to your skill level.
 
-## 📌 License
+## License
 
-MIT © 2025 popcycle
-
+MIT 2025 popcycle
